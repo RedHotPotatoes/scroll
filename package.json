@@ -16,8 +16,8 @@
       "activitybar": [
         {
           "id": "scroll",
-          "title": "Scroll View",
-          "icon": "images/sidebar-leaf.svg"
+          "title": "Scroll",
+          "icon": "images/sidebar-scroll.svg"
         }
       ]
     },
@@ -26,7 +26,7 @@
         {
           "type": "webview",
           "id": "scroll.scrollview",
-          "name": "Main View"
+          "name": ""
         }
       ]
     }
