@@ -1,0 +1,119 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    padding: 0 0px;
+    height: 100%;
+    font-family: Arial, sans-serif;
+  }
+  
+  .chat-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  .conversation-view {
+    flex: 1;
+    overflow-y: auto;
+    background-color: transparent;
+    margin-bottom: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  
+  .message-separator, .io-separator, .top-separator {
+    height: 1px;
+    border: 0 none;
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-editor-foreground);
+    opacity: 0.1;
+  }
+
+  .message {
+    margin: 10px 7px;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .user-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+  }
+
+  .assistant-logo {
+    width: 24px;
+    height: 24px;
+    margin-right: 10px;
+  }
+
+  .username {
+    font-weight: bold;
+    font-size: x-small;
+    color: var(--vscode-editor-foreground)
+  }
+
+  .message-text {
+    padding-top: 10px;
+    color: var(--vscode-editor-foreground);
+    word-wrap: break-word;
+    line-height: 1.5;
+    font-family: monospace;
+    font-size: small;
+  }
+
+  .message-text-ai {
+    padding-top: 10px;
+    color: var(--vscode-editor-foreground);
+    line-height: 1.5;
+    font-family: monospace;
+    font-size: small;
+  }
+
+  .input-bar {
+    display: flex;
+    margin: 7px 7px;
+    background-color: var(--vscode-editor-background);
+    border-radius: 7px;
+    border: 0.5px solid;
+    border-color: rgba(255, 255, 255, 0.1);
+    outline: none;
+  }
+  
+  .input {
+    flex: 1;
+    overflow: hidden;
+    color: var(--vscode-editor-foreground);
+    background-color: transparent;
+    opacity: 0.7;
+    font-size: 85%;
+    border: none;
+    resize: none;
+  }
+
+  textarea.input {
+    outline: none;
+    padding: 10px 10px;
+  }
+  
+  .go-button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    margin-top: auto;
+  }
+
+  .go-button img {
+    width: 32px;
+    height: 28px;
+  }

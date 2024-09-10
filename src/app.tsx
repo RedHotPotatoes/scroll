@@ -1,258 +1,344 @@
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-import ReactMarkdown from 'react-markdown';
+import React, { Component, createRef } from 'react';
+import { render } from 'react-dom';
+import { Prism } from "react-syntax-highlighter";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import assistantLogo from './assets/assistant-logo.png';
-import dislikeButton from './assets/dislike-button.png';
+import userLogo from './assets/user-logo.png';
 import goButton from './assets/go-button.png';
 import likeButton from './assets/like-button.png';
+import dislikeButton from './assets/dislike-button.png';
+
+import './App.css';
+
+const Markdown = require('markdown-to-jsx');
 
 const SERVER_ADDRESS = 'https://446c-109-236-92-134.ngrok-free.app';
 
-interface ResizableSearchBarProps {
-    onRequestClick: (text: string) => void;
-}
-
-interface ResizableSearchBarState {
+class Message {
     text: string;
+    isUser: boolean;
+
+    constructor(text: string, isUser: boolean) {
+        this.text = text;
+        this.isUser = isUser;
+    }
 }
 
-class ResizableSearchBar extends React.Component<ResizableSearchBarProps, ResizableSearchBarState> {
-    private inputRef: React.RefObject<HTMLTextAreaElement>;
-    private divRef: React.RefObject<HTMLDivElement>;
-    private searchBarStyle: React.CSSProperties;
-    private inputStyle: React.CSSProperties;
-    private trailingIconStyle: React.CSSProperties;
+interface AppProps {
 
-    private maxHeight: number = 150;
+}
+interface AppState {
+    messages: Message[];
+    input: string;
+    lastAiMessage: Message | null;
+    inputPlaceholder: string;
+    inputHeight: string;
+    isInputActive: boolean;
+    themeKind: string;
+}
+
+class App extends Component<AppProps, AppState> {
+    private inputRef: React.RefObject<HTMLTextAreaElement>;
+    private chatEndRef: React.RefObject<HTMLDivElement>;
+    private queryId: string | null = null;
+
+    private placeholder: string = 'Paste error here...';
+    private placeholderFollowUp: string = 'Follow Up';
 
     constructor(props: any) {
         super(props);
         this.state = {
-            text: '',
+            messages: [],
+            lastAiMessage: null,
+            input: '',
+            inputHeight: 'auto',
+            inputPlaceholder: this.queryId ? this.placeholderFollowUp : this.placeholder,
+            isInputActive: true,
+            themeKind: 'dark',
         };
-        this.inputRef = React.createRef();
-        this.divRef = React.createRef();
-
-        this.searchBarStyle = {
-            width: '95%',
-            backgroundColor: 'var(--vscode-editor-background)',
-            borderRadius: '7px',
-            left: '2.5%',
-            display: 'flex',
-            alignItems: 'center',
-            border: '0.5px solid',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            resize: 'none',
-            paddingBottom: '15px',
-            position: 'absolute',
-            bottom: '12px'
-        };
-
-        this.inputStyle = {
-            width: '85%',
-            backgroundColor: 'transparent',
-            border: 'none',
-            color: 'var(--vscode-editor-foreground)',
-            opacity: 0.7,
-            outline: 'none',
-            resize: 'none',
-            maxHeight: `${this.maxHeight}px`,
-            fontSize: '95%',
-            marginLeft: '10px',
-            marginTop: '15px',
-        };
-
-        this.trailingIconStyle = {
-            position: 'absolute',
-            right: '-7px',
-            top: '-7px',
-            transform: 'scale(0.8)',
-        };
+        this.inputRef = createRef();
+        this.chatEndRef = createRef();
     }
 
-    adjustHeight = () => {
-        const inputElement = this.inputRef.current;
-        const divElement = this.divRef.current;
+    componentDidMount(): void {
+        window.addEventListener("message", this.handleMessage);
+    }
 
-        if (inputElement) {
-            inputElement.style.height = 'auto';
-            const scrollHeight = inputElement.scrollHeight;
-            inputElement.style.height = `${scrollHeight}px`;
-            if (divElement) {
-                divElement.style.height = `${Math.min(scrollHeight, this.maxHeight)}px`;
-            }
-        }
+    componentWillUnmount(): void {
+        window.removeEventListener("message", this.handleMessage);
+    }
+
+    handleMessage = (event: MessageEvent) => {
+        const message = event.data;
+        this.setState({ themeKind: message.themeKind });
     };
 
-    handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        this.setState({ text: e.target.value });
-        this.adjustHeight();
-    };
-
-    handleClick = () => {
-        const text = this.state.text;
-        if (text.length === 0) {
+    componentDidUpdate(prevProps: Readonly<AppProps>, prevState: Readonly<AppState>, snapshot?: any): void {
+        const lastAiMessage = this.state.lastAiMessage;
+        if (!lastAiMessage || !prevState.lastAiMessage || !this.chatEndRef.current) {
             return;
         }
-        this.setState({ text: '' });
-        this.props.onRequestClick(text);
+        if (lastAiMessage.text !== prevState.lastAiMessage.text) {
+            this.chatEndRef.current.scrollIntoView({ block: 'end', behavior: 'instant' });
+        }
+    }
+  
+    handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        this.setState({ input: e.target.value }, () => {
+            const inputElement = this.inputRef.current;
+            if (!inputElement) {
+                return;
+            }
+            this.setState({
+                inputHeight: 'auto',
+            }, () => {
+                this.setState({
+                    inputHeight: `${inputElement.scrollHeight}px`,
+                });
+            });
+        });
     };
 
-    componentDidMount() {
-        this.adjustHeight();
-    }
-
-    render(): React.ReactNode {
-        const buttonStyle = {
-            backgroundColor: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            outline: 'none',
-            padding: '0',
-            margin: '0',
-        };
-
-        return (
-            <div style={this.searchBarStyle} ref={this.divRef}>
-                <textarea
-                    placeholder='Paste error message...'
-                    ref={this.inputRef}
-                    style={this.inputStyle}
-                    value={this.state.text}
-                    onChange={this.handleChange}
-                />
-                <button style={buttonStyle}>
-                    <img src={goButton} style={this.trailingIconStyle} onClick={this.handleClick}/>
-                </button>
-            </div>
-        );
-    }
-}
-
-interface AssistantResponseProps {
-    text: string;
-}
-
-class AssistantResponse extends React.Component<AssistantResponseProps, {}> {
-    private containerStyle: React.CSSProperties;
-    private assistantTextStyle: React.CSSProperties;
-    private topRowStyle: React.CSSProperties;
-
-    constructor(props: any) {
-        super(props);
-
-        this.containerStyle = {
-            width: '95%',
-            left: '2.5%',
-            backgroundColor: 'transparent',
-            color: 'var(--vscode-editor-foreground)',
-            position: 'absolute',
-        };
-
-        this.assistantTextStyle = {
-            color: 'var(--vscode-editor-foreground)',
-            fontSize: 'x-small',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center'
-        };
-
-        this.topRowStyle = {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-        };
-    }
-
-    render() {
-        return (
-            <div style={this.containerStyle}>
-                <div style={this.topRowStyle}>
-                    <div style={{ display: 'flex'}}>
-                        <img src={assistantLogo} style={{width: '24px', height: '24px', marginRight: '10px'}} />
-                        <div style={this.assistantTextStyle}>Scroll Assistant</div>
-                    </div>
-                    <div style={{ display: 'flex'}}>
-                        <img src={likeButton} style={{width: '15px', height: '12px', marginRight: '5px'}} />
-                        <img src={dislikeButton} style={{width: '15px', height: '12px'}} />
-                    </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
-                    <div style={{ flex: '1 1 auto', maxHeight: '85vh', overflowY: 'auto' }}>
-                        <ReactMarkdown>{this.props.text}</ReactMarkdown>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-interface MainViewState {
-    text: string;
-}
-
-class MainView extends React.Component<{}, MainViewState> {
-    constructor(props: any) {
-        super(props);
-        this.state = {
-            text: '',
-        };
-        this.handleRequest = this.handleRequest.bind(this);
-    }
-    
-    handleRequest = (text: string) => {
-        this.streamingRequest(text);
+    handlePlaceholder = () => {
+        this.setState({ inputPlaceholder: this.queryId ? this.placeholderFollowUp : this.placeholder });
+    };
+  
+    handleSubmit = (e: any) => {
+        e.preventDefault();
+        if (!this.state.isInputActive) {
+            return;
+        }
+        const { input, messages } = this.state;
+        if (input.trim()) {
+            const userMessage = new Message(input, true);
+            const assistantMessage = new Message('', false);
+            this.setState({
+                messages: [...messages, userMessage],
+                lastAiMessage: assistantMessage,
+                input: '',
+                inputHeight: 'auto', // Reset input bar height
+                inputPlaceholder: '',
+                isInputActive: false,
+            });
+            this.streamingRequest(input);
+        }
     };
 
-    streamingRequest(errorMessageText: string): void {
-        const errorMessage = encodeURIComponent(`${errorMessageText}`);
+    handleNewLine = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        e.preventDefault();
+        if (!this.state.isInputActive) {
+            return;
+        }
+        const input = this.state.input;
+        if (input.endsWith('\n')) {                
+            const inputElement = this.inputRef.current;
+            if (!inputElement) {
+                return;
+            }
+            const inputLength = input.length;
+            inputElement.selectionStart = inputLength;
+            inputElement.selectionEnd = inputLength;
+            return;
+        }
+        this.setState({ input: `${this.state.input}\n` });
+    };
 
-        this.setState({ text: `**Fetching response...**` });
-        const url = `${SERVER_ADDRESS}/generate_solution?error_message=${errorMessage}`;
+    handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            this.handleSubmit(e);
+        } else if (e.key === 'Enter' && e.shiftKey) {
+            this.handleNewLine(e);
+        }
+    };
+
+    moveLastAiMessageToMessages = () => {
+        const { messages, lastAiMessage: last_assistant_message } = this.state;
+        if (last_assistant_message) {
+            this.setState({
+                messages: [...messages, last_assistant_message],
+                lastAiMessage: null,
+            });
+        }
+    };
+
+    setLastAiMessage = (text: string) => {
+        this.setState({lastAiMessage: new Message(text, false)});
+    };
+
+    streamingRequest(queryText: string): void {
+        var url: string;
+        const isFollowUp = this.queryId !== null;
+        if (!isFollowUp) {
+            const errorMessage = encodeURIComponent(`${queryText}`);
+            this.setLastAiMessage('**Processing...**');
+            url = `${SERVER_ADDRESS}/generate_solution?error_message=${errorMessage}`;
+        } else {
+            url = `${SERVER_ADDRESS}/follow_up?user_text=${queryText}&query_id=${this.queryId}`;
+        }
+
         fetch(url, {
             method: 'post'
         })
             .then(response => {
                 if (!response.ok) {
-                    this.setState({ text: 'Error fetching response' });
+                    this.setLastAiMessage('Error fetching response');
                 } else {
                     const reader = response.body?.getReader();
                     const decoder = new TextDecoder('utf-8');
 
-                    var firstTokenReceived: boolean = false;
+                    var firstTokenReceived: boolean = isFollowUp;
                     const readStream = (): void => {
                         reader?.read().then(({ done, value }) => {
                             if (done) {
+                                this.moveLastAiMessageToMessages();
+                                this.handlePlaceholder();
+                                this.setState({ isInputActive: true });
                                 return;
                             }
                             if (!firstTokenReceived) {
-                                this.setState({ text: '' });
+                                this.setLastAiMessage('');
                                 firstTokenReceived = true;
                             }
                             const text = decoder.decode(value, { stream: true });
-                            this.setState({ text: this.state.text + text });
+                            if (text.includes('**QUERY ID:**')) {
+                                this.queryId = text.split('**QUERY ID:**')[1].trim();
+                            } else {
+                                this.setLastAiMessage(this.state.lastAiMessage?.text + text);
+                            }
                             readStream();
                         });
                     };
                     readStream();
                 }
             })
-            .catch((error) => this.setState({ text: `Cathing error during fetching response ${error}` }));
+            .catch((error) => {
+                this.setLastAiMessage(`Cathing error during fetching response ${error}`);
+            });
     }
 
-    render() {
+    renderUserMessage = (msg: Message) => {
         return (
-            <div>
-                <AssistantResponse text={this.state.text}/>
-                <ResizableSearchBar onRequestClick={this.handleRequest}/>
+            <div className="message">
+                <div className="user-info">
+                    <img src={userLogo} alt="User Logo" className="user-logo" />
+                    <span className="username">User</span>
+                </div>
+                <div className="message-text">{msg.text}</div>
+            </div>
+        );
+    };
+
+    codeComponent = (props: any) => {
+        const child = props.children || '';
+        const isCodeBlock = child.includes('\n');
+        
+        if (!isCodeBlock) {
+            return <code>{child}</code>;
+        }
+        const codeContent = child.trim();
+        const codeMatch = codeContent.match(/^([a-zA-Z]+)\n([\s\S]*)/);
+        
+        let language = '';
+        let codeText = codeContent;
+        
+        if (codeMatch) {
+            language = codeMatch[1]; 
+            codeText = codeMatch[2];  
+        }
+        
+        const style = this.state.themeKind === 'light' ? oneLight : oneDark;
+        const themeOverrides = {
+            fontSize: "x-small",
+            fontFamily: "monospace",
+            color: "var(--vscode-editor-background)",
+            background: "var(--vscode-editor-background)",
+        };
+        return (
+            <Prism
+                customStyle={themeOverrides}
+                style={style}
+                language={language}
+                showLineNumbers={false}
+            >
+                {codeText}
+            </Prism>
+        );
+    };
+
+    renderAssistantMessage = (msg: Message) => {
+        return (
+            <div className="message">
+                <div className="user-info">
+                    <img src={assistantLogo} alt="Assistant Logo" className="assistant-logo" />
+                    <span className="username">Scroll Assistant</span>
+                </div>
+                <div className="message-text-ai" ref={this.chatEndRef}>
+                    <Markdown
+                        options={{
+                            overrides: {
+                                ul: {
+                                    component: (props: any) => <ul style={{ marginLeft: '10px'}} {...props}/>,
+                                },
+                                ol: {
+                                    component: (props: any) => <ol style={{ marginLeft: '10px'}} {...props}/>,
+                                },
+                                li: {
+                                    component: (props: any) => <li style={{ marginBottom: '10px'}} {...props}/>,
+                                },
+                                code: this.codeComponent,
+                            }
+                        }}
+                    >
+                        {msg.text}
+                    </Markdown>
+                </div>
+            </div>
+        );
+    };
+
+    renderMessage = (msg: Message, index: number) => {
+        return (
+            <div key={index} className="message-container">
+                {index !== 0 && <hr className="message-separator" />}
+                {msg.isUser ? this.renderUserMessage(msg) : this.renderAssistantMessage(msg)}
+            </div>
+        );
+    };
+  
+    render() {
+        const { messages, input, inputHeight } = this.state;
+
+        const isButtonEnabled = input.trim().length > 0 && this.state.isInputActive;
+        return (
+            <div className="chat-container">
+                {messages.length > 0 && <hr className="top-separator"/>}
+                <div className="conversation-view">
+                    {messages.map((msg, index) => (
+                        this.renderMessage(msg, index)
+                    ))}
+                    {this.state.lastAiMessage && this.renderMessage(this.state.lastAiMessage, messages.length)}
+                </div>
+                <hr className="io-separator" />
+                <form className="input-bar" onSubmit={this.handleSubmit}>
+                    <textarea
+                        className="input"
+                        style={{ height: inputHeight }}
+                        value={input}
+                        ref={this.inputRef}
+                        placeholder={this.state.inputPlaceholder}
+                        disabled={!this.state.isInputActive}
+                        onChange={this.handleInputChange}
+                        onKeyDown={this.handleKeyDown}
+                        rows={1}
+                    />
+                    <button className="go-button">
+                        <img src={goButton} style={{opacity: isButtonEnabled ? 1 : 0.2}}/>
+                    </button>
+                </form>
             </div>
         );
     }
-}
+  }
 
-const App = () => {
-    return <MainView />;
-};
-
-ReactDOM.render(<App />, document.getElementById('root'));
+render(<App />, document.getElementById('root'));

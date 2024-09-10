@@ -2,7 +2,25 @@ import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
     const provider = new ScrollViewProvider(context.extensionUri);
-    
+
+    vscode.window.onDidChangeActiveColorTheme(() => {
+        sendThemeInfo();
+    });
+
+    const getThemeKind = () => {
+        const kind = vscode.window.activeColorTheme.kind;
+        if (kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast) {
+            return 'dark';
+        }
+        return 'light';
+    };
+
+    const sendThemeInfo = () => {
+        const themeKind = getThemeKind();
+        provider.postMessage({ themeKind });
+    };
+    sendThemeInfo();
+
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             ScrollViewProvider.viewType,
@@ -33,6 +51,10 @@ class ScrollViewProvider implements vscode.WebviewViewProvider {
 		const appPath = vscode.Uri.joinPath(this._extensionUri, 'out', 'app.js');
 		const appUri = this._view.webview.asWebviewUri(vscode.Uri.file(appPath.path));
         this._view.webview.html = this._getHtmlForWebview(appUri);
+    }
+
+    public postMessage(message: any) {
+        this._view?.webview.postMessage(message);
     }
 
 	private _getHtmlForWebview(appUri: vscode.Uri) {
