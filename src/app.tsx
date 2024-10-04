@@ -588,14 +588,16 @@ class App extends Component<AppProps, AppState> {
     }
 
     render_login() {
+        const description = 'Access to extension is limited. Reach constantine7cd@gmail.com to request access.';
         return (
             <div className='login-container'>
-                <div>
-                    <h4 className='login-text'>Login to Continue</h4>
-                    <button className='login-button' onClick={this.handleLoginClick}>
-                        Sign in with Google
-                    </button>
-                </div>
+                <text style={{width: '80%', textAlign: 'center'}}>
+                    {description}
+                </text>
+                <h4 className='login-text'>Login to Continue</h4>
+                <button className='login-button' onClick={this.handleLoginClick}>
+                    Sign in with Google
+                </button>
             </div>
         );
     }

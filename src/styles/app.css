@@ -138,12 +138,12 @@
     height: 100vh;
     background-color: var(--vscode-editor-background);
     color: var(--vscode-editor-foreground);
-    gap: 20px;
+    gap: 5px;
   }
 
   .login-text {
     color: var(--vscode-editor-foreground);
-    padding: 10px;
+    padding-top: 10px;
     text-align: center;
   }
 
