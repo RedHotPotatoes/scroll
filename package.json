@@ -1,6 +1,7 @@
 {
   "name": "scroll",
   "displayName": "scroll",
+  "publisher": "hot-potatoes",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -29,6 +30,77 @@
           "name": ""
         }
       ]
+    },
+    "commands": [
+      {
+        "command": "scroll.startNewSession",
+        "title": "Start New Session",
+        "icon": "$(add)"
+      },
+      {
+        "command": "scroll.troubleshootFromSelection",
+        "title": "Troubleshoot from selected text"
+      },
+      {
+        "command": "scroll.troubleshootFromClipboard",
+        "title": "Troubleshoot from the clipboard"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "scroll.troubleshootFromSelection",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      },
+      {
+        "command": "scroll.troubleshootFromClipboard",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "scroll.startNewSession"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "scroll.startNewSession",
+          "when": "view == scroll.scrollview",
+          "group": "navigation@+"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "scroll.troubleshootFromSelection",
+          "when": "editorTextFocus && editorHasSelection"
+        },
+        {
+          "command": "scroll.troubleshootFromClipboard",
+          "when": "editorTextFocus"
+        }
+      ],
+      "terminal/context": [
+        {
+          "command": "scroll.troubleshootFromSelection",
+          "when": "terminal.active && terminal.visible"
+        },
+        {
+          "command": "scroll.troubleshootFromClipboard",
+          "when": "terminal.active && terminal.visible"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Scroll Configuration",
+      "properties": {
+        "scroll.serverAddress": {
+          "type": "string",
+          "default": "https://e106-2a00-7c80-0-5f-00.ngrok-free.app",
+          "description": "The address of the Scroll server"
+        }
+      }
     }
   },
   "scripts": {
@@ -57,6 +129,7 @@
     "markdown-to-jsx": "^7.5.0",
     "react-markdown": "^6.0.0",
     "react-syntax-highlighter": "^15.5.0",
+    "react-tooltip": "^5.28.0",
     "remark-gfm": "^4.0.0",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",

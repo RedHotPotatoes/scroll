@@ -2,18 +2,25 @@ import React, { Component, createRef } from 'react';
 import { render } from 'react-dom';
 import { Prism } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import FloatingPreview from './floatingPreview';
 
 import assistantLogo from './assets/assistant-logo.png';
 import userLogo from './assets/user-logo.png';
 import goButton from './assets/go-button.png';
 import likeButton from './assets/like-button.png';
+import likedButton from './assets/liked-button.png';
 import dislikeButton from './assets/dislike-button.png';
+import dislikedButton from './assets/disliked-button.png';
 
-import './App.css';
+import './styles/app.css';
 
 const Markdown = require('markdown-to-jsx');
 
-const SERVER_ADDRESS = 'https://446c-109-236-92-134.ngrok-free.app';
+interface vscode {
+    postMessage(message: any): void;
+}
+
+declare const vscode: vscode;
 
 class Message {
     text: string;
@@ -36,6 +43,17 @@ interface AppState {
     inputHeight: string;
     isInputActive: boolean;
     themeKind: string;
+    likedMessage: boolean;
+    dislikedMessage: boolean;
+    streamingAIMessage: boolean;
+    hoveredReferenceLink: {
+        previewData?: {
+            url: string;
+        };
+        x?: number;
+        y?: number;
+    }
+    isLoggedIn: boolean;
 }
 
 class App extends Component<AppProps, AppState> {
@@ -43,22 +61,73 @@ class App extends Component<AppProps, AppState> {
     private chatEndRef: React.RefObject<HTMLDivElement>;
     private queryId: string | null = null;
 
+    private serverAddress: string | null = null;
+
     private placeholder: string = 'Paste error here...';
     private placeholderFollowUp: string = 'Follow Up';
+
+    private resolveTokenPromise: ((value: string) => void) | null = null;
+    private resolveServerAddressPromise: ((value: string) => void) | null = null;
 
     constructor(props: any) {
         super(props);
         this.state = {
+            ...this._initState(),
+            isLoggedIn: false,
+        };
+        this.inputRef = createRef();
+        this.chatEndRef = createRef();
+        this._fetchServerAddress().then((address) => {
+            this.serverAddress = address;
+        });
+    }
+
+    private _initState = () => {
+        return {
             messages: [],
             lastAiMessage: null,
             input: '',
             inputHeight: 'auto',
-            inputPlaceholder: this.queryId ? this.placeholderFollowUp : this.placeholder,
+            inputPlaceholder: this.placeholder,
             isInputActive: true,
             themeKind: 'dark',
+            likedMessage: false,
+            dislikedMessage: false,
+            streamingAIMessage: false,
+            hoveredReferenceLink: {},
         };
-        this.inputRef = createRef();
-        this.chatEndRef = createRef();
+    };
+
+    private _fetchToken = () => {
+        return new Promise<string>((resolve, reject) => {
+            if (this.resolveTokenPromise) {
+                reject(new Error('Token already in use'));
+                return;
+            }
+            this.resolveTokenPromise = resolve;
+            vscode.postMessage({ auth: 'getToken' });
+        });
+    };
+
+    private _fetchServerAddress = () => {
+        return new Promise<string>((resolve, reject) => {
+            if (this.resolveServerAddressPromise) {
+                reject(new Error('Address already fetched'));
+                return;
+            }
+            this.resolveServerAddressPromise = resolve;
+            vscode.postMessage({ config: 'getServerAddress'});
+        }); 
+    };
+    
+    private _reset(): void {
+        this.queryId = null;
+        this.setState(this._initState());
+    }
+
+    private _logout(): void {
+        this._reset();
+        this.setState({ isLoggedIn: false });
     }
 
     componentDidMount(): void {
@@ -68,10 +137,40 @@ class App extends Component<AppProps, AppState> {
     componentWillUnmount(): void {
         window.removeEventListener("message", this.handleMessage);
     }
-
+    
     handleMessage = (event: MessageEvent) => {
         const message = event.data;
-        this.setState({ themeKind: message.themeKind });
+
+        if (message.token && this.resolveTokenPromise) {
+            this.resolveTokenPromise(message.token);
+            this.resolveTokenPromise = null;
+        }
+        if (message.serverAddress && this.resolveServerAddressPromise) {
+            this.resolveServerAddressPromise(message.serverAddress);
+            this.resolveServerAddressPromise = null;
+        }
+        if (message.themeKind) {
+            this.setState({ themeKind: message.themeKind });
+        }
+        if (message.command) {
+            switch (message.command) {
+                case 'startNewSession':
+                    this._reset();
+
+                    if (message.searchText) {
+                        this.setState({ input: message.searchText }, () => {
+                            this.handleSubmit({ preventDefault: () => { } });
+                        });
+                    }
+                    break;
+            }
+        }
+        if (message.auth && message.auth === 'loggedIn') {
+            this.setState({ isLoggedIn: true });
+        }
+        if (message.auth && message.auth === 'loggedOut') {
+            this._logout();
+        }
     };
 
     componentDidUpdate(prevProps: Readonly<AppProps>, prevState: Readonly<AppState>, snapshot?: any): void {
@@ -121,7 +220,9 @@ class App extends Component<AppProps, AppState> {
                 inputPlaceholder: '',
                 isInputActive: false,
             });
-            this.streamingRequest(input);
+            this._fetchToken().then((token) => {
+                this.streamingRequest(input, token);
+            });
         }
     };
 
@@ -152,6 +253,82 @@ class App extends Component<AppProps, AppState> {
         }
     };
 
+    _addReaction = (reaction: string, token: string) => {
+        const url = `${this.serverAddress}/add_reaction/${reaction}?query_id=${this.queryId}`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }  
+        }).then(response => {
+            if (response.ok) {
+                if (reaction === 'like') {
+                    this.setState({ likedMessage: true, dislikedMessage: false });
+                } else if (reaction === 'dislike') {
+                    this.setState({ likedMessage: false, dislikedMessage: true });
+                }
+            } else {
+                response.text().then(text => {
+                    console.error(`Failed to add ${reaction} reaction. Status: ${response.status}, Response: ${text}`);
+                });
+            }
+        }).catch(error => {
+            console.error(error);
+        });
+    };
+
+    _removeReaction = (reaction: string, token: string) => {
+        const url = `${this.serverAddress}/remove_reaction/${reaction}?query_id=${this.queryId}`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }      
+        }).then(response => {
+            if (response.ok) {
+                if (reaction === 'like') {
+                    this.setState({ likedMessage: false });
+                } else if (reaction === 'dislike') {
+                    this.setState({ dislikedMessage: false });
+                }
+            } else {
+                response.text().then(text => {
+                    console.error(`Failed to remove ${reaction} reaction. Status: ${response.status}, Response: ${text}`);
+                });
+            }
+        }).catch(error => {
+            console.error(error);
+        });
+    };
+ 
+    handleLoginClick = () => {
+        vscode.postMessage({ auth: 'login'});
+    };
+    
+    handleLikeClick = () => {
+        if (this.queryId === null) {
+            return;
+        }
+        this._fetchToken().then((token) => {
+            if (this.state.likedMessage) {
+                this._removeReaction('like', token);
+            }
+            this._addReaction('like', token);
+        });
+    };
+
+    handleDislikeClick = () => {
+        if (this.queryId === null) {
+            return;
+        }
+        this._fetchToken().then((token) => {
+            if (this.state.dislikedMessage) {
+                this._removeReaction('dislike', token);
+            }
+            this._addReaction('dislike', token);
+        });
+    };
+
     moveLastAiMessageToMessages = () => {
         const { messages, lastAiMessage: last_assistant_message } = this.state;
         if (last_assistant_message) {
@@ -166,23 +343,32 @@ class App extends Component<AppProps, AppState> {
         this.setState({lastAiMessage: new Message(text, false)});
     };
 
-    streamingRequest(queryText: string): void {
+    streamingRequest(queryText: string, token: string): void {
         var url: string;
         const isFollowUp = this.queryId !== null;
         if (!isFollowUp) {
             const errorMessage = encodeURIComponent(`${queryText}`);
             this.setLastAiMessage('**Processing...**');
-            url = `${SERVER_ADDRESS}/generate_solution?error_message=${errorMessage}`;
+            url = `${this.serverAddress}/generate_solution?error_message=${errorMessage}`;
         } else {
-            url = `${SERVER_ADDRESS}/follow_up?user_text=${queryText}&query_id=${this.queryId}`;
+            url = `${this.serverAddress}/follow_up?user_text=${queryText}&query_id=${this.queryId}`;
         }
 
+        this.setState({ streamingAIMessage: true });
         fetch(url, {
-            method: 'post'
+            method: 'post',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
         })
             .then(response => {
-                if (!response.ok) {
+                if (response.status === 401) {
+                    vscode.postMessage({ auth: 'logout'});
+                    return;
+                }
+                else if (!response.ok) {
                     this.setLastAiMessage('Error fetching response');
+                    this.setState({ streamingAIMessage: false });
                 } else {
                     const reader = response.body?.getReader();
                     const decoder = new TextDecoder('utf-8');
@@ -190,10 +376,13 @@ class App extends Component<AppProps, AppState> {
                     var firstTokenReceived: boolean = isFollowUp;
                     const readStream = (): void => {
                         reader?.read().then(({ done, value }) => {
+                            if (!this.state.streamingAIMessage) {
+                                return;
+                            }
                             if (done) {
                                 this.moveLastAiMessageToMessages();
                                 this.handlePlaceholder();
-                                this.setState({ isInputActive: true });
+                                this.setState({ isInputActive: true, streamingAIMessage: false });
                                 return;
                             }
                             if (!firstTokenReceived) {
@@ -201,8 +390,11 @@ class App extends Component<AppProps, AppState> {
                                 firstTokenReceived = true;
                             }
                             const text = decoder.decode(value, { stream: true });
-                            if (text.includes('**QUERY ID:**')) {
-                                this.queryId = text.split('**QUERY ID:**')[1].trim();
+                            if (text.includes('- **QUERY ID:**')) {
+                                const chunkSplit = text.split('- **QUERY ID:**');
+
+                                this.setLastAiMessage(this.state.lastAiMessage?.text + `\n${chunkSplit[0]}`);
+                                this.queryId = chunkSplit[1].trim();
                             } else {
                                 this.setLastAiMessage(this.state.lastAiMessage?.text + text);
                             }
@@ -214,13 +406,14 @@ class App extends Component<AppProps, AppState> {
             })
             .catch((error) => {
                 this.setLastAiMessage(`Cathing error during fetching response ${error}`);
+                this.setState({ streamingAIMessage: false });
             });
     }
 
     renderUserMessage = (msg: Message) => {
         return (
             <div className="message">
-                <div className="user-info">
+                <div className="user-details">
                     <img src={userLogo} alt="User Logo" className="user-logo" />
                     <span className="username">User</span>
                 </div>
@@ -266,12 +459,43 @@ class App extends Component<AppProps, AppState> {
         );
     };
 
+    mouseHover = (event: React.MouseEvent<HTMLSpanElement>, previewData: { url: string }) => {
+        const { clientX, clientY } = event;
+        this.setState({
+            hoveredReferenceLink: {
+                previewData,
+                x: clientX,
+                y: clientY,
+            },
+        });
+    };
+
+    mouseLeave = () => {
+        this.setState({ hoveredReferenceLink: {} });
+    };
+
     renderAssistantMessage = (msg: Message) => {
         return (
             <div className="message">
-                <div className="user-info">
-                    <img src={assistantLogo} alt="Assistant Logo" className="assistant-logo" />
-                    <span className="username">Scroll Assistant</span>
+                <div className="ai-message-header">
+                    <div className="user-details">
+                        <img src={assistantLogo} alt="Assistant Logo" className="assistant-logo" />
+                        <span className="username">Scroll Assistant</span>
+                    </div>
+                    <div className="feedback-buttons">
+                        <img 
+                            src={this.state.likedMessage ? likedButton : likeButton} 
+                            alt="Like" 
+                            className="feedback-button" 
+                            onClick={this.handleLikeClick}
+                        />
+                        <img 
+                            src={this.state.dislikedMessage ? dislikedButton : dislikeButton} 
+                            alt="Dislike" 
+                            className="feedback-button" 
+                            onClick={this.handleDislikeClick}
+                        />
+                    </div>
                 </div>
                 <div className="message-text-ai" ref={this.chatEndRef}>
                     <Markdown
@@ -285,6 +509,29 @@ class App extends Component<AppProps, AppState> {
                                 },
                                 li: {
                                     component: (props: any) => <li style={{ marginBottom: '10px'}} {...props}/>,
+                                },
+                                a: {
+                                    component: ({ href, children }: any) => (
+                                        <span
+                                            data-tip
+                                            data-for={href}
+                                        >
+                                            <a 
+                                                href={href} 
+                                                onMouseEnter={(e) => this.mouseHover(e, { url: href })} 
+                                                onMouseLeave={this.mouseLeave}
+                                            >
+                                                {children}
+                                            </a>
+                                            {this.state.hoveredReferenceLink.previewData && (
+                                            <FloatingPreview
+                                                url={this.state.hoveredReferenceLink.previewData.url}
+                                                x={this.state.hoveredReferenceLink.x || 0}
+                                                y={this.state.hoveredReferenceLink.y || 0}
+                                            />
+                                            )}
+                                        </span>
+                                    ),
                                 },
                                 code: this.codeComponent,
                             }
@@ -306,7 +553,7 @@ class App extends Component<AppProps, AppState> {
         );
     };
   
-    render() {
+    render_chat() {
         const { messages, input, inputHeight } = this.state;
 
         const isButtonEnabled = input.trim().length > 0 && this.state.isInputActive;
@@ -338,6 +585,26 @@ class App extends Component<AppProps, AppState> {
                 </form>
             </div>
         );
+    }
+
+    render_login() {
+        return (
+            <div className='login-container'>
+                <div>
+                    <h4 className='login-text'>Login to Continue</h4>
+                    <button className='login-button' onClick={this.handleLoginClick}>
+                        Sign in with Google
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        if (this.state.isLoggedIn) {
+            return this.render_chat();
+        }
+        return this.render_login();
     }
   }
 

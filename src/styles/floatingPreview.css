@@ -1,0 +1,15 @@
+.floating-preview {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-editor-foreground);
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-width: 95%;
+    overflow: auto;
+    white-space: normal;
+}
