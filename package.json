@@ -3,7 +3,8 @@
   "displayName": "scroll",
   "publisher": "hot-potatoes",
   "description": "Assistant that helps to resolve errors",
-  "version": "0.0.1",
+  "icon": "images/scroll.png",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -105,10 +106,8 @@
   },
   "scripts": {
     "build": "webpack --mode production",
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
+    "prepackage": "npm run compile && npm run build",
     "lint": "eslint src --ext ts",
     "test": "vscode-test"
   },

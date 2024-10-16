@@ -443,19 +443,24 @@ class App extends Component<AppProps, AppState> {
         const style = this.state.themeKind === 'light' ? oneLight : oneDark;
         const themeOverrides = {
             fontSize: "x-small",
-            fontFamily: "monospace",
-            color: "var(--vscode-editor-background)",
-            background: "var(--vscode-editor-background)",
+            margin: 0,
+            padding: "10px",
         };
         return (
-            <Prism
-                customStyle={themeOverrides}
-                style={style}
-                language={language}
-                showLineNumbers={false}
-            >
-                {codeText}
-            </Prism>
+            <div className="code-frame">
+                <div className="code-frame-header">
+                    <span className="code-language">{language}</span>
+                </div>
+                <Prism
+                    customStyle={themeOverrides}
+                    style={style}
+                    language={language}
+                    showLineNumbers={false}
+                    wrapLongLines={true}
+                >
+                    {codeText}
+                </Prism>
+            </div>
         );
     };
 
@@ -501,14 +506,26 @@ class App extends Component<AppProps, AppState> {
                     <Markdown
                         options={{
                             overrides: {
+                                h1: {
+                                    component: (props: any) => <h1 style={{ marginBottom: '10px', marginTop: '10px' }} {...props} />,
+                                },
+                                h2: {
+                                    component: (props: any) => <h2 style={{ marginBottom: '10px', marginTop: '10px' }} {...props} />,
+                                },
+                                h3: {
+                                    component: (props: any) => <h3 style={{ marginBottom: '10px', marginTop: '10px' }} {...props} />,
+                                },
+                                h4: {
+                                    component: (props: any) => <h4 style={{ marginBottom: '5px', marginTop: '5px' }} {...props} />,
+                                },
                                 ul: {
-                                    component: (props: any) => <ul style={{ marginLeft: '10px'}} {...props}/>,
+                                    component: (props: any) => <ul style={{ marginLeft: '20px'}} {...props}/>,
                                 },
                                 ol: {
-                                    component: (props: any) => <ol style={{ marginLeft: '10px'}} {...props}/>,
+                                    component: (props: any) => <ol style={{ marginLeft: '20px'}} {...props}/>,
                                 },
                                 li: {
-                                    component: (props: any) => <li style={{ marginBottom: '10px'}} {...props}/>,
+                                    component: (props: any) => <li style={{ marginBottom: '5px', marginTop: '5px'}} {...props}/>,
                                 },
                                 a: {
                                     component: ({ href, children }: any) => (
@@ -588,7 +605,7 @@ class App extends Component<AppProps, AppState> {
     }
 
     render_login() {
-        const description = 'Access to extension is limited. Reach constantine7cd@gmail.com to request access.';
+        const description = 'If you encounter any issues accessing the extension, please get in touch with constantine7cd@gmail.com.';
         return (
             <div className='login-container'>
                 <text style={{width: '80%', textAlign: 'center'}}>

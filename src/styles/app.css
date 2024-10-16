@@ -77,7 +77,6 @@
     color: var(--vscode-editor-foreground);
     word-wrap: break-word;
     line-height: 1.5;
-    font-family: monospace;
     font-size: small;
   }
 
@@ -85,7 +84,6 @@
     padding-top: 10px;
     color: var(--vscode-editor-foreground);
     line-height: 1.5;
-    font-family: monospace;
     font-size: small;
   }
 
@@ -156,4 +154,29 @@
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s;
+  }
+
+  .code-frame {
+    border: 1px solid var(--vscode-editor-foreground);
+    border-radius: 5px;
+    margin: 10px 0;
+    overflow: hidden;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    width: 95vw;
+    box-sizing: border-box;
+  }
+
+  .code-frame-header {
+    background-color: var(--vscode-editor-background);
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .code-language {
+    color: var(--vscode-editor-foreground);
+    font-weight: bold;
   }

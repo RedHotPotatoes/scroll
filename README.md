@@ -12,3 +12,6 @@ Press the '+' button to create a new session. We are going to add history suppor
 
 ### Reactions
 Don't hesitate to rate the answers and give reactions (like/dislike). 
+
+### Feedback 
+If you have any questions, suggestions, or feedback, please get in touch with constantine7cd@gmail.com.
