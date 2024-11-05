@@ -4,7 +4,7 @@
   "publisher": "hot-potatoes",
   "description": "Assistant that helps to resolve errors",
   "icon": "images/scroll.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.91.0"
   },
@@ -98,7 +98,7 @@
       "properties": {
         "scroll.serverAddress": {
           "type": "string",
-          "default": "https://e106-2a00-7c80-0-5f-00.ngrok-free.app",
+          "default": "https://stingray-emerging-yearly.ngrok-free.app",
           "description": "The address of the Scroll server"
         }
       }
